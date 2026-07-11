@@ -140,14 +140,17 @@ class CandleStore:
         try:
             query = f"SELECT ts, open, high, low, close, volume, value, is_synthetic FROM read_parquet('{glob}')"
             clauses = []
+            params: list[datetime] = []
             if start_utc is not None:
-                clauses.append(f"ts >= TIMESTAMP '{start_utc.astimezone(timezone.utc):%Y-%m-%d %H:%M:%S}'")
+                clauses.append("ts >= ?")
+                params.append(start_utc.astimezone(timezone.utc))
             if end_utc is not None:
-                clauses.append(f"ts <= TIMESTAMP '{end_utc.astimezone(timezone.utc):%Y-%m-%d %H:%M:%S}'")
+                clauses.append("ts <= ?")
+                params.append(end_utc.astimezone(timezone.utc))
             if clauses:
                 query += " WHERE " + " AND ".join(clauses)
             query += " ORDER BY ts"
-            df = con.execute(query).df()
+            df = con.execute(query, params).df()
         finally:
             con.close()
         df["ts"] = pd.to_datetime(df["ts"], utc=True)
